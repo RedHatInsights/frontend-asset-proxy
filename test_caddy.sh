@@ -16,18 +16,9 @@ SPA_DEEP_LINK_PATH="/some/deep/spa/link" # This should also serve the SPA entryp
 # Set the base URL for your Caddy server
 CADDY_BASE_URL="http://localhost:8080" # Adjust if your Caddy is on a different port
 
-# Define paths to test
 HEALTH_PATH="/healthz"
 ROOT_PATH="/"
-# Assuming you have an index.html at the root of your S3/Minio bucket
 SPA_ENTRYPOINT_EXPECTED_CONTENT_SNIPPET="Caddy & Minio Test Page" # A snippet from your index.html <title>
-
-# Assuming you have uploaded css/style.css to your Minio bucket
-# If not, this test will likely fail or hit the SPA fallback.
-# You can comment it out or change it to an asset you know exists.
-ASSET_PATH="/css/style.css"
-ASSET_EXPECTED_CONTENT_TYPE="text/css" # Or "application/octet-stream" if Minio doesn't set it
-
 SPA_DEEP_LINK_PATH="/some/deep/spa/link" # This should also serve the SPA entrypoint
 
 # --- Helper Functions ---
