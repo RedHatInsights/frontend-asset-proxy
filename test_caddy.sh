@@ -3,7 +3,6 @@
 # Caddy Test Script (for Specific File & Simplified Proxy)
 
 # --- Configuration ---
-<<<<<<< HEAD
 CADDY_BASE_URL="http://localhost:8080" # Adjust if your Caddy is on a different port
 
 HEALTH_PATH="/healthz"
@@ -20,18 +19,6 @@ INDEX_HTML_EXPECTED_CONTENT_TYPE="text/html"
 INDEX_HTML_EXPECTED_CONTENT_SNIPPET="Caddy & Minio Test Page" # A snippet from your index.html <title>
 
 # --- Helper Functions ---
-=======
-# Set the base URL for your Caddy server
-CADDY_BASE_URL="http://localhost:8080" # Adjust if your Caddy is on a different port
-
-HEALTH_PATH="/healthz"
-ROOT_PATH="/"
-SPA_ENTRYPOINT_EXPECTED_CONTENT_SNIPPET="Caddy & Minio Test Page" # A snippet from your index.html <title>
-SPA_DEEP_LINK_PATH="/some/deep/spa/link" # This should also serve the SPA entrypoint
-
-# --- Helper Functions ---
-# Function to make a curl request and check the status code
->>>>>>> 7b41624 (Add test script and README)
 # $1: Test Name
 # $2: URL to test
 # $3: Expected HTTP Status Code
