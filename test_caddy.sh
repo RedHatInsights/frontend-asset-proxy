@@ -3,7 +3,6 @@
 # Caddy Test Script (for Specific File & Simplified Proxy)
 
 # --- Configuration ---
-<<<<<<< HEAD
 CADDY_BASE_URL="http://localhost:8080" # Adjust if your Caddy is on a different port
 
 HEALTH_PATH="/healthz"
