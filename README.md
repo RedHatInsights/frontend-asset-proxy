@@ -8,7 +8,7 @@ This component is part of an initiative to implement an object storage-based pus
 
 Key functionalities include:
 * Reverse proxying requests to S3/Minio.
-* Supporting Single Page Application (SPA) routing by ensuring that requests for non-existent asset paths correctly serve the main application entrypoint (e.g., `index.html`).
+* Supporting Single Page Application (SPA) routing by ensuring that requests for non-existent asset paths correctly serve the main application entrypoint (e.g., `index.html`). (Note: The Caddyfile in this repository is configured for this; ensure your chosen Caddyfile version supports SPA if needed).
 * Providing a flexible point for potential future processing of asset requests.
 * Designed to be deployed as a containerized application, managed by a Frontend Operator (FEO) within a Kubernetes environment (e.g., in the FEO namespace as a new managed resource).
 * Built and versioned using Konflux.
@@ -18,113 +18,103 @@ Key functionalities include:
 * Based on [Caddy Web Server](https://caddyserver.com/).
 * Containerized using Docker for consistent deployments.
 * Configurable at runtime via environment variables.
-* Includes SPA fallback routing.
-* Provides a `/healthz` endpoint for health checks.
+* Includes a `/healthz` endpoint for health checks.
 
 ## Configuration (Runtime via Environment Variables)
 
-The proxy is configured primarily through the `Caddyfile` located in the root of this repository. Runtime behavior is controlled by the following environment variables, which should be provided by the deployment environment (e.g., the Frontend Operator):
+The proxy is configured primarily through the `Caddyfile`. Runtime behavior is controlled by the following environment variables, which should be provided by the deployment environment (e.g., the Frontend Operator or Docker Compose):
 
-| Variable                | Description                                                                    | Example (for local Minio)                    | Default (if any) | Required |
-| ----------------------- | ------------------------------------------------------------------------------ | -------------------------------------------- | ---------------- | -------- |
-| `SERVER_PORT`           | The internal port the Caddy server will listen on within the container.        | `8080`                                       | `8080`           | No       |
-| `ASSET_BACKEND_URL`     | The URL of the S3/Minio bucket root where assets are stored.                     | `http://minio-dev:9000/frontend-assets`      | N/A              | Yes      |
-| `SPA_ENTRYPOINT_PATH`   | The path to the SPA's entry HTML file (e.g., index.html) within the asset backend. | `/index.html`                                | `/index.html`    | No       |
-| `LOG_LEVEL`             | The log level for Caddy (DEBUG, INFO, WARN, ERROR).                      | `INFO`                                       | `INFO`           | No       |
+| Variable                | Description                                                                    | Example (for local Minio)                    | Default (Caddyfile) | Required |
+| ----------------------- | ------------------------------------------------------------------------------ | -------------------------------------------- | ------------------- | -------- |
+| `SERVER_PORT`           | The internal port the Caddy server will listen on within the container.        | `8080`                                       | `8080`              | No       |
+| `MINIO_UPSTREAM_URL`    | The base URL of the Minio/S3 service (scheme, host, port only).                | `http://minio:9000` (Docker Compose service name) | N/A                 | Yes      |
+| `BUCKET_PATH_PREFIX`    | The bucket name/path prefix to be prepended to requests (must start with `/`). | `/frontend-assets`                           | N/A                 | Yes      |
+| `SPA_ENTRYPOINT_PATH`   | Path to the SPA's entry HTML file within the bucket (e.g., `/index.html`).     | `/index.html`                                | `/index.html`       | No       |
+| `LOG_LEVEL`             | The log level for Caddy (DEBUG, INFO, WARN, ERROR).                      | `DEBUG`                                      | `DEBUG` (in Caddyfile) | No       |
 
 ## Included Files
 
 * **`Caddyfile`**: The core Caddy server configuration.
 * **`Dockerfile`**: Used to build the Docker container image for this proxy.
+* **`docker-compose.yml`**: For easy local setup of Caddy and Minio.
+* **`Makefile`**: Provides convenient commands for common development tasks.
 * **`test_caddy.sh`**: A shell script to run basic `curl` tests against a running instance of the proxy.
 * **`README.md`**: This file.
 * **`.gitignore`**: Specifies intentionally untracked files that Git should ignore.
 
-## Local Setup & Testing
+## Local Setup & Testing (Using Makefile - Recommended)
 
-These instructions guide you through setting up and testing the Caddy proxy locally on a Linux Fedora system (adaptable for other OS with Docker).
+The `Makefile` simplifies starting, testing, and stopping the local environment.
 
-### Prerequisites
+**Prerequisites:**
+* Docker
+* Docker Compose
+* `make`
+* Bash Shell (for `test_caddy.sh`)
+* Git (to clone the repository)
 
-1.  **Docker:** Ensure Docker is installed and running.
-2.  **Git:** To clone this repository.
-3.  **Text Editor:** For viewing/editing files.
-4.  **Bash Shell:** For running the test script.
+**Steps:**
 
-### Steps
-
-1.  **Clone the Repository:**
+1.  **Clone the Repository (if you haven't already):**
     ```bash
     git clone [URL_OF_THIS_REPOSITORY]
     cd frontend-asset-proxy
     ```
 
-2.  **Set Up Minio (Local S3-Compatible Backend):**
-    * Create a Docker network (if it doesn't exist):
-        ```bash
-        docker network create my-dev-network
-        ```
-    * Create a local directory for Minio data:
-        ```bash
-        mkdir -p ~/minio/data
-        ```
-    * Run the Minio container:
-        ```bash
-        docker run -d \
-          --name minio-dev \
-          --network my-dev-network \
-          -p 9000:9000 \
-          -p 9001:9001 \
-          -v ~/minio/data:/data:Z \
-          -e "MINIO_ROOT_USER=minioadmin" \
-          -e "MINIO_ROOT_PASSWORD=minioadmin" \
-          minio/minio server /data --console-address ":9001"
-        ```
-        *(Note the `:Z` on the volume mount for SELinux on Fedora).*
-    * **Configure Minio:**
-        * Open your browser to `http://localhost:9001`.
-        * Log in with `minioadmin` / `minioadmin`.
-        * Create a bucket named `frontend-assets`.
-        * Set the `frontend-assets` bucket's "Access Policy" to "Public".
-        * Upload a sample `index.html` to the root of the `frontend-assets` bucket. You can use the `index.html` provided in previous examples or create your own.
-        * (Optional) Upload a `css/style.css` file if you want to test the asset path in `test_caddy.sh` directly.
-
-3.  **Build the Caddy Proxy Docker Image:**
-    Navigate to the root of this repository (where the `Dockerfile` is located) and run:
+2.  **Ensure Test Script is Executable (one-time setup):**
     ```bash
-    docker build -t frontend-asset-proxy:local .
+    chmod +x test_caddy.sh
     ```
 
-4.  **Run the Caddy Proxy Container:**
+3.  **Run Tests (This command handles setup and execution):**
     ```bash
-    docker run --rm -p 8080:8080 --name my-caddy-proxy \
-      --network my-dev-network \
-      -e SERVER_PORT="8080" \
-      -e ASSET_BACKEND_URL="http://minio-dev:9000/frontend-assets" \
-      -e SPA_ENTRYPOINT_PATH="/index.html" \
-      -e LOG_LEVEL="DEBUG" \
-      frontend-asset-proxy:local
+    make test
     ```
-    * `--rm`: Automatically removes the container when it exits.
-    * You should see Caddy startup logs in your terminal.
+    This command will:
+    * Start Minio and Caddy services in the background using `docker-compose up -d`.
+    * Prompt you to set up Minio. **This is crucial for the first run or if Minio data was cleared (`make clean-all`).**
+        * Go to the Minio Console: `http://localhost:9001`
+        * Log in: `minioadmin` / `minioadmin`
+        * Create bucket: `frontend-assets`
+        * Set `frontend-assets` bucket "Access Policy" to "Public".
+        * Upload necessary test files to the `frontend-assets` bucket:
+            * `index.html` (to the root of the bucket)
+            * `edge-navigation.json` (to the path `api/chrome-service/v1/static/stable/prod/navigation/` within the bucket)
+    * After setting up Minio, press Enter in the terminal where `make test` is waiting.
+    * The `./test_caddy.sh` script will then execute.
 
-5.  **Test the Caddy Proxy:**
-    * **Manual Browser Test:**
-        * Open `http://localhost:8080/` in your browser. You should see your `index.html`.
-        * Try `http://localhost:8080/some/non-existent/spa-route`. It should also serve `index.html`.
-    * **Using the Test Script:**
-        * Open a new terminal window.
-        * Navigate to the repository directory.
-        * Make the script executable: `chmod +x test_caddy.sh`
-        * Run the script: `./test_caddy.sh`
-        * Review the output for test successes or failures.
+4.  **Review Test Output:**
+    The script will indicate if tests passed or failed.
 
-6.  **View Caddy Logs:**
-    If you ran the Caddy container in detached mode (`-d`), you can view its logs with:
+5.  **View Logs (for debugging if tests fail):**
+    * All services: `make logs`
+    * Caddy only: `make caddy-logs`
+    * Minio only: `make minio-logs`
+    (Press `Ctrl+C` to stop following logs).
+
+6.  **Stop Services:**
+    When you're done:
     ```bash
-    docker logs my-caddy-proxy
+    make down
     ```
 
-7.  **Stopping Local Services:**
-    * To stop Caddy: Press `Ctrl+C` in the terminal where it's running (if attached), or `docker stop my-caddy-proxy` (if detached).
-    * To stop Minio: `docker stop minio-dev`
+**Other Useful Makefile Commands:**
+* `make help`: Shows all available commands and their descriptions.
+* `make up`: Starts services without running tests or prompting for Minio setup.
+* `make build`: Rebuilds the Caddy Docker image (e.g., after `Caddyfile` changes).
+* `make clean`: Stops and removes containers and networks.
+* `make clean-all`: Stops and removes containers, networks, AND the Minio data volume (this will delete your Minio bucket and files, requiring Minio setup again).
+
+### Manual Local Setup & Testing (Alternative)
+
+If you prefer not to use `make` or need to perform steps individually, refer to the `docker-compose.yml` and `test_caddy.sh` script. You would typically:
+1.  Start services with `docker-compose up -d`.
+2.  Configure Minio as described in the `make test` step above.
+3.  Run `chmod +x test_caddy.sh && ./test_caddy.sh`.
+4.  Stop services with `docker-compose down`.
+
+## Deployment
+
+This component is designed to be deployed by the Frontend Operator (FEO). The container image will be built by Konflux and made available in the organization's container registry.
+
+Refer to the FEO documentation for specific deployment procedures and how it manages this resource.

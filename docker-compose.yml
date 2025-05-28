@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  minio:
+    image: minio/minio:latest
+    container_name: minio-dev-compose 
+    ports:
+      - "9000:9000" # S3 API port
+      - "9001:9001" # Minio Console port
+    volumes:
+      - minio_data:/data # Docker named volume for persistence
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    command: server /data --console-address ":9001"
+    networks:
+      - caddy_test_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  caddy:
+    build:
+      context: . # Assumes Dockerfile is in the same directory as docker-compose.yml
+      dockerfile: Dockerfile
+    container_name: caddy-proxy-compose
+    ports:
+      - "8080:8080" # Expose Caddy's port (as defined by SERVER_PORT)
+    depends_on:
+      minio:
+        condition: service_healthy # Wait for Minio to be healthy
+    environment:
+      - SERVER_PORT=8080
+      # MINIO_UPSTREAM_URL uses the service name 'minio' from this docker-compose file
+      - MINIO_UPSTREAM_URL=http://minio:9000 
+      - BUCKET_PATH_PREFIX=/frontend-assets
+      # SPA_ENTRYPOINT_PATH is for the more complete Caddyfile.
+      - SPA_ENTRYPOINT_PATH=/index.html 
+      - LOG_LEVEL=DEBUG
+    networks:
+      - caddy_test_net
+
+volumes:
+  minio_data: # Defines the named volume for Minio persistence
+
+networks:
+  caddy_test_net:
+    driver: bridge
+

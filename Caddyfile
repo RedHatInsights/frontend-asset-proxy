@@ -1,25 +1,15 @@
 # Caddyfile for S3 Reverse Proxy with SPA Support
 
-# Environment variables
+# Global options block.
 {
-    # Default values can be provided using ':-'
-    # Example: {$ENV_VAR:-default_value}
-
-    # SERVER_PORT: The internal port Caddy will listen on.
-    # S3_BUCKET_ENDPOINT: The full base HTTP(S) endpoint of your S3 bucket.
-    #                     e.g., https://my-bucket-name.s3.us-east-1.amazonaws.com
-    #                     or for Minio: http://minio-dev:9000/my-bucket-name
-    # SPA_ENTRYPOINT_PATH: The path to your SPA's entry HTML file within the bucket.
-    #                      e.g., /index.html
-    # LOG_LEVEL: Caddy's log level (DEBUG, INFO, WARN, ERROR).
+    debug 
 }
 
 # Define the HTTP server
 http://:{$SERVER_PORT:-8080} {
-    # Enable logging. Output to stderr, level configurable by ENV var.
     log {
         output stderr
-        level {$LOG_LEVEL:-INFO}
+        level  DEBUG
     }
 
     # Health check endpoint
@@ -28,33 +18,33 @@ http://:{$SERVER_PORT:-8080} {
     }
 
     # Handle errors, specifically for SPA routing.
-    # If a request to S3 results in a 403 (Forbidden) or 404 (Not Found),
-    # this block will attempt to serve the SPA_ENTRYPOINT_PATH instead.
-     handle_errors {
-        # @spa_fallback matches if the upstream (S3) returns a 403 or 404.
+    handle_errors {
         @spa_fallback expression {http.error.status_code} == 403 || {http.error.status_code} == 404
 
         handle @spa_fallback {
-            # Directly reverse proxy to the fully constructed SPA entrypoint URL.
-            # SPA_ENTRYPOINT_PATH should start with a '/' (e.g., /index.html).
-            # S3_BUCKET_ENDPOINT should generally NOT end with a '/' to avoid double slashes.
-            reverse_proxy {$S3_BUCKET_ENDPOINT}{$SPA_ENTRYPOINT_PATH:-/index.html} {
+            # Construct the full path to the SPA entrypoint in the bucket.
+            # e.g., /frontend-assets/index.html
+            rewrite * {$BUCKET_PATH_PREFIX}{$SPA_ENTRYPOINT_PATH:-/index.html}
+            
+            # Proxy to the Minio base URL. Caddy will use the rewritten path.
+            reverse_proxy {$MINIO_UPSTREAM_URL} {
                 header_up Host {http.reverse_proxy.upstream.hostport}
-                # Ensure other necessary headers for S3 are passed if needed.
             }
         }
 
-        # For any other errors not handled by @spa_fallback (e.g., 500 from S3),
-        # respond with the original error.
         respond "{http.error.status_code} {http.error.status_text}" {
             close
         }
     }
 
-    # Main reverse proxy handler for all other requests
+    # Main reverse proxy handler.
     handle {
-        # Proxy requests to the S3_BUCKET_ENDPOINT.
-        reverse_proxy {$S3_BUCKET_ENDPOINT}/* {
+        # Prepend the bucket path prefix to the original request path.
+        # e.g., if request is /css/style.css, URI becomes /frontend-assets/css/style.css
+        rewrite * {$BUCKET_PATH_PREFIX}{http.request.uri.path}
+
+        # Proxy to the Minio base URL. Caddy will use the rewritten path.
+        reverse_proxy {$MINIO_UPSTREAM_URL} {
             header_up Host {http.reverse_proxy.upstream.hostport}
         }
     }

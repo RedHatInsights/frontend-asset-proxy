@@ -1,15 +1,23 @@
 #!/bin/bash
 
-# Caddy Test Script
+# Caddy Test Script (for Specific File & Simplified Proxy)
 
 # --- Configuration ---
 <<<<<<< HEAD
 CADDY_BASE_URL="http://localhost:8080" # Adjust if your Caddy is on a different port
 
 HEALTH_PATH="/healthz"
-ROOT_PATH="/"
-SPA_ENTRYPOINT_EXPECTED_CONTENT_SNIPPET="Caddy & Minio Test Page" # A snippet from your index.html <title>
-SPA_DEEP_LINK_PATH="/some/deep/spa/link" # This should also serve the SPA entrypoint
+
+# Specific file to test, as requested by the user
+SPECIFIC_FILE_PATH="/api/chrome-service/v1/static/stable/prod/navigation/edge-navigation.json"
+SPECIFIC_FILE_EXPECTED_CONTENT_TYPE="application/json"
+# Optional: Add a snippet from your JSON if you want to verify content, e.g.:
+# SPECIFIC_FILE_EXPECTED_CONTENT_SNIPPET='"someKey": "someValue"' 
+
+# Configuration for testing index.html directly
+INDEX_HTML_PATH="/index.html" # Changed from "/" to "/index.html"
+INDEX_HTML_EXPECTED_CONTENT_TYPE="text/html"
+INDEX_HTML_EXPECTED_CONTENT_SNIPPET="Caddy & Minio Test Page" # A snippet from your index.html <title>
 
 # --- Helper Functions ---
 =======
@@ -41,12 +49,17 @@ run_test() {
     echo "Running Test: $test_name"
     echo "   URL: $url"
 
-    response=$(curl -s -L -w "\nHTTP_STATUS:%{http_code}\nCONTENT_TYPE:%{content_type}" -o response_body.tmp "$url")
+    response_headers_file=$(mktemp)
+    response_body_file=$(mktemp)
+
+    # Perform the curl request
+    http_status=$(curl -s -L -w "%{http_code}" -o "$response_body_file" -D "$response_headers_file" "$url")
     
-    http_status=$(echo "$response" | grep "HTTP_STATUS:" | cut -d':' -f2)
-    content_type=$(echo "$response" | grep "CONTENT_TYPE:" | cut -d':' -f2 | awk '{$1=$1};1') # awk to trim whitespace
-    body_content=$(cat response_body.tmp)
-    rm -f response_body.tmp
+    # Extract Content-Type, removing charset and extra spaces
+    content_type=$(grep -i "^Content-Type:" "$response_headers_file" | awk '{$1=$1};1' | cut -d' ' -f2- | sed 's/;.*//')
+    body_content=$(cat "$response_body_file")
+    
+    rm -f "$response_headers_file" "$response_body_file"
 
     echo "   Received Status: $http_status"
     if [ "$http_status" -ne "$expected_status" ]; then
@@ -99,12 +112,16 @@ all_tests_passed=true
 run_test "Health Check" "${CADDY_BASE_URL}${HEALTH_PATH}" 200 "text/plain" "OK"
 if [ $? -ne 0 ]; then all_tests_passed=false; fi
 
-# Test 2: Root Path (SPA Entrypoint)
-run_test "Root Path (SPA Entrypoint)" "${CADDY_BASE_URL}${ROOT_PATH}" 200 "text/html" "$SPA_ENTRYPOINT_EXPECTED_CONTENT_SNIPPET"
+# Test 2: Specific File Request
+# This test assumes the file exists in Minio at the correct path:
+# BUCKET_PATH_PREFIX + SPECIFIC_FILE_PATH
+# e.g., /frontend-assets/api/chrome-service/v1/static/stable/prod/navigation/edge-navigation.json
+run_test "Specific File Request" "${CADDY_BASE_URL}${SPECIFIC_FILE_PATH}" 200 "$SPECIFIC_FILE_EXPECTED_CONTENT_TYPE" # Add SPECIFIC_FILE_EXPECTED_CONTENT_SNIPPET if desired
 if [ $? -ne 0 ]; then all_tests_passed=false; fi
 
-# Test 3: SPA Deep Link
-run_test "SPA Deep Link" "${CADDY_BASE_URL}${SPA_DEEP_LINK_PATH}" 200 "text/html" "$SPA_ENTRYPOINT_EXPECTED_CONTENT_SNIPPET"
+# Test 3: Index.html (Direct Request)
+# This test assumes index.html exists in Minio at the root of the bucket path prefix
+run_test "Index.html (Direct Request)" "${CADDY_BASE_URL}${INDEX_HTML_PATH}" 200 "$INDEX_HTML_EXPECTED_CONTENT_TYPE" "$INDEX_HTML_EXPECTED_CONTENT_SNIPPET"
 if [ $? -ne 0 ]; then all_tests_passed=false; fi
 
 
