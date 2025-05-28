@@ -19,26 +19,6 @@ INDEX_HTML_EXPECTED_CONTENT_TYPE="text/html"
 INDEX_HTML_EXPECTED_CONTENT_SNIPPET="Caddy & Minio Test Page" # A snippet from your index.html <title>
 
 # --- Helper Functions ---
-=======
-# Set the base URL for your Caddy server
-CADDY_BASE_URL="http://localhost:8080" # Adjust if your Caddy is on a different port
-
-HEALTH_PATH="/healthz"
-
-# Specific file to test, as requested by the user
-SPECIFIC_FILE_PATH="/api/chrome-service/v1/static/stable/prod/navigation/edge-navigation.json"
-SPECIFIC_FILE_EXPECTED_CONTENT_TYPE="application/json"
-# Optional: Add a snippet from your JSON if you want to verify content, e.g.:
-# SPECIFIC_FILE_EXPECTED_CONTENT_SNIPPET='"someKey": "someValue"' 
-
-# Configuration for testing index.html directly
-INDEX_HTML_PATH="/index.html" # Changed from "/" to "/index.html"
-INDEX_HTML_EXPECTED_CONTENT_TYPE="text/html"
-INDEX_HTML_EXPECTED_CONTENT_SNIPPET="Caddy & Minio Test Page" # A snippet from your index.html <title>
-
-# --- Helper Functions ---
-# Function to make a curl request and check the status code
->>>>>>> 7b41624 (Add test script and README)
 # $1: Test Name
 # $2: URL to test
 # $3: Expected HTTP Status Code
