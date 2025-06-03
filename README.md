@@ -8,7 +8,7 @@ This component is part of an initiative to implement an object storage-based pus
 
 Key functionalities include:
 * Reverse proxying requests to S3/Minio.
-* Supporting Single Page Application (SPA) routing by ensuring that requests for non-existent asset paths correctly serve the main application entrypoint (e.g., `index.html`). (Note: The Caddyfile in this repository is configured for this; ensure your chosen Caddyfile version supports SPA if needed).
+* Supporting Single Page Application (SPA) routing by ensuring that requests for non-existent asset paths correctly serve the main application entrypoint (e.g., `index.html`).
 * Providing a flexible point for potential future processing of asset requests.
 * Designed to be deployed as a containerized application, managed by a Frontend Operator (FEO) within a Kubernetes environment (e.g., in the FEO namespace as a new managed resource).
 * Built and versioned using Konflux.
@@ -40,7 +40,6 @@ The proxy is configured primarily through the `Caddyfile`. Runtime behavior is c
 * **`Makefile`**: Provides convenient commands for common development tasks.
 * **`test_caddy.sh`**: A shell script to run basic `curl` tests against a running instance of the proxy.
 * **`README.md`**: This file.
-* **`.gitignore`**: Specifies intentionally untracked files that Git should ignore.
 
 ## Local Setup & Testing (Using Makefile - Recommended)
 
