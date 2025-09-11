@@ -36,6 +36,8 @@ services:
       BUCKET_PATH_PREFIX: "/frontend-assets"
       # SPA_ENTRYPOINT_PATH is for the more complete Caddyfile.
       SPA_ENTRYPOINT_PATH: "/index.html"
+      # MANIFEST_LOCATION for operator-generated fed-modules.json
+      MANIFEST_LOCATION: "/srv/dist/operator-generated/fed-modules.json"
       LOG_LEVEL: "DEBUG"
     networks:
       - caddy_test_net

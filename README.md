@@ -9,6 +9,8 @@ This component is part of an initiative to implement an object storage-based pus
 Key functionalities include:
 * Reverse proxying requests to S3/Minio.
 * Supporting Single Page Application (SPA) routing by ensuring that requests for non-existent asset paths correctly serve the main application entrypoint (e.g., `index.html`).
+* **Manifest file handling**: Special handling for `fed-mods.json` manifest files with appropriate caching headers and fallback locations.
+* **Operator-generated manifest support**: Prioritizes operator-generated manifest files when available via the `MANIFEST_LOCATION` environment variable.
 * Providing a flexible point for potential future processing of asset requests.
 * Designed to be deployed as a containerized application, managed by a Frontend Operator (FEO) within a Kubernetes environment (e.g., in the FEO namespace as a new managed resource).
 * Built and versioned using Konflux.
@@ -30,6 +32,7 @@ The proxy is configured primarily through the `Caddyfile`. Runtime behavior is c
 | `MINIO_UPSTREAM_URL`    | The base URL of the Minio/S3 service (scheme, host, port only).                | `http://minio:9000` (Docker Compose service name) | N/A                 | Yes      |
 | `BUCKET_PATH_PREFIX`    | The bucket name/path prefix to be prepended to requests (must start with `/`). | `/frontend-assets`                           | N/A                 | Yes      |
 | `SPA_ENTRYPOINT_PATH`   | Path to the SPA's entry HTML file within the bucket (e.g., `/index.html`).     | `/index.html`                                | `/index.html`       | No       |
+| `MANIFEST_LOCATION`     | Path to operator-generated fed-modules.json manifest file.                     | `/srv/dist/operator-generated/fed-modules.json` | `/srv/dist/operator-generated/fed-modules.json` | No |
 | `LOG_LEVEL`             | The log level for Caddy (DEBUG, INFO, WARN, ERROR).                      | `DEBUG`                                      | `DEBUG` (in Caddyfile) | No       |
 
 ## Included Files

@@ -17,10 +17,48 @@
         respond "OK" 200
     }
 
+    # Handle manifest files specifically
+    @manifest_match {
+        path */fed-mods.json
+    }
+    handle @manifest_match {
+        # Set appropriate headers for manifest files
+        header Content-Type application/json
+        header Cache-Control "no-cache, no-store, must-revalidate"
+        header Pragma no-cache
+        header Expires 0
+
+        # Try to serve from operator-generated location first, then fallback to static locations
+        try_files {$MANIFEST_LOCATION:/srv/dist/operator-generated/fed-modules.json} {$BUCKET_PATH_PREFIX}/data{http.request.uri.path} {$BUCKET_PATH_PREFIX}/data/stable{http.request.uri.path} {$BUCKET_PATH_PREFIX}/data/preview{http.request.uri.path}
+        
+        reverse_proxy {$MINIO_UPSTREAM_URL} {
+            header_up Host {http.reverse_proxy.upstream.hostport}
+        }
+    }
+
+    # Handle operator-generated fed-modules.json specifically
+    @operator_fed_modules {
+        path {$MANIFEST_LOCATION:/srv/dist/operator-generated/fed-modules.json}
+    }
+    handle @operator_fed_modules {
+        header Content-Type application/json
+        header Cache-Control "no-cache, no-store, must-revalidate"
+        header Pragma no-cache
+        header Expires 0
+
+        reverse_proxy {$MINIO_UPSTREAM_URL} {
+            header_up Host {http.reverse_proxy.upstream.hostport}
+        }
+    }
+
     # Main request handling.
     # If incoming request is /app_name/filepath.ext
     # it will be rewritten to BUCKET_PATH_PREFIX/data/app_name/filepath.ext
-    handle {
+    @main_match {
+        not path */fed-mods.json
+        not path {$MANIFEST_LOCATION:/srv/dist/operator-generated/fed-modules.json}
+    }
+    handle @main_match {
         # Prepend BUCKET_PATH_PREFIX/data to the incoming request URI path
         rewrite * {$BUCKET_PATH_PREFIX}/data{http.request.uri.path}
         
