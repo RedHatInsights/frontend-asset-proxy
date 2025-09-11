@@ -4,7 +4,6 @@
 {
     debug
     auto_https off
-    include http.handlers 
 }
 
 # Define the HTTP server
@@ -18,42 +17,8 @@
     # If incoming request is /app_name/filepath.ext
     # it will be rewritten to BUCKET_PATH_PREFIX/data/app_name/filepath.ext
     handle {
-        log {
-            output stderr
-            level  DEBUG
-            format json
-            include http.reverse_proxy
-        }
         # Prepend BUCKET_PATH_PREFIX/data to the incoming request URI path
-        rewrite * {$BUCKET_PATH_PREFIX}/data{http.request.uri.path}
         
-        reverse_proxy {$MINIO_UPSTREAM_URL} {
-            header_up Host {http.reverse_proxy.upstream.hostport}
-        }
-    }
-
-    # Handle errors from the above proxy attempt (e.g., for SPA routes)
-    handle_errors {
-        log {
-            output stderr
-            level  DEBUG
-            format json
-            include http.reverse_proxy http.request.header_up
-        }
-
-        @spa_fallback expression {http.error.status_code} == 403 || {http.error.status_code} == 404
-        handle @spa_fallback {
-            # Rewrite to the SPA entry point, assuming it's also under the 'data' prefix in S3.
-            # e.g., if SPA_ENTRYPOINT_PATH is /index.html, this becomes /frontend-assets/data/index.html
-            rewrite * {$BUCKET_PATH_PREFIX}/data{$SPA_ENTRYPOINT_PATH:/index.html}
-            
-            reverse_proxy {$MINIO_UPSTREAM_URL} {
-                header_up Host {http.reverse_proxy.upstream.hostport}
-            }
-        }
-        # For other errors not handled by SPA fallback
-        respond "{http.error.status_code} {http.error.status_text}" {
-            close
-        }
+        reverse_proxy {$MINIO_UPSTREAM_URL}
     }
 }
