@@ -2,16 +2,13 @@
 
 # Global options block.
 {
-    debug 
+    debug
+    auto_https off
+    include http.handlers 
 }
 
 # Define the HTTP server
 :{$SERVER_PORT:8080} {
-    log {
-        output stderr
-        level  DEBUG
-    }
-
     # Health check endpoint
     handle /healthz {
         respond "OK" 200
@@ -21,6 +18,12 @@
     # If incoming request is /app_name/filepath.ext
     # it will be rewritten to BUCKET_PATH_PREFIX/data/app_name/filepath.ext
     handle {
+        log {
+            output stderr
+            level  DEBUG
+            format json
+            include http.reverse_proxy
+        }
         # Prepend BUCKET_PATH_PREFIX/data to the incoming request URI path
         rewrite * {$BUCKET_PATH_PREFIX}/data{http.request.uri.path}
         
@@ -31,6 +34,13 @@
 
     # Handle errors from the above proxy attempt (e.g., for SPA routes)
     handle_errors {
+        log {
+            output stderr
+            level  DEBUG
+            format json
+            include http.reverse_proxy http.request.header_up
+        }
+
         @spa_fallback expression {http.error.status_code} == 403 || {http.error.status_code} == 404
         handle @spa_fallback {
             # Rewrite to the SPA entry point, assuming it's also under the 'data' prefix in S3.
