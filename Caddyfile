@@ -27,11 +27,21 @@
 	}
 
 	# Main request handling.
-	# If incoming request is /app_name/filepath.ext
+	# If incoming request is /apps/app_name/filepath.ext
 	# it will be rewritten to BUCKET_PATH_PREFIX/data/app_name/filepath.ext
+	handle /apps/* {
+		# Strip /apps prefix and prepend BUCKET_PATH_PREFIX/data
+		rewrite /apps/* /{$BUCKET_PATH_PREFIX}/data/{path.1}
+
+		reverse_proxy {$MINIO_UPSTREAM_URL} {
+			header_up Host {http.reverse_proxy.upstream.hostport}
+		}
+	}
+
+	# Fallback for requests not starting with /apps
 	handle {
 		# Prepend BUCKET_PATH_PREFIX/data to the incoming request URI path
-		rewrite * /{$BUCKET_PATH_PREFIX}/data{http.request.uri.path.strip_prefix("/apps")}
+		rewrite * /{$BUCKET_PATH_PREFIX}/data{http.request.uri.path}
 
 		reverse_proxy {$MINIO_UPSTREAM_URL} {
 			header_up Host {http.reverse_proxy.upstream.hostport}
