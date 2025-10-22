@@ -1,11 +1,18 @@
-FROM quay.io/redhat-services-prod/hcm-eng-prod-tenant/caddy-ubi:latest
+FROM registry.access.redhat.com/ubi9/go-toolset:1.24.6 AS builder
+ENV GO111MODULE=on
+WORKDIR $GOPATH/src/frontend-asset-proxy/
+COPY go.mod go.mod
+COPY go.sum go.sum
+COPY Makefile Makefile
+COPY cmd cmd
+COPY internal internal
+USER root
+RUN go get -v ./cmd/proxy
+RUN CGO_ENABLED=0 go build -o /go/bin/frontend-asset-proxy cmd/proxy/main.go
 
-# Set a working directory
-WORKDIR /srv
-
-# Copy custom Caddyfile into the standard Caddy configuration location inside the container
-COPY Caddyfile /etc/caddy/Caddyfile
-
-# Expose the default port that Caddy will listen on (as defined in your Caddyfile)
-# This port can be changed at runtime via the SERVER_PORT environment variable
+FROM registry.access.redhat.com/ubi9-minimal:latest
+WORKDIR /app
+COPY --from=builder /go/bin/frontend-asset-proxy /usr/bin
+ENTRYPOINT ["/usr/bin/frontend-asset-proxy"]
 EXPOSE 8080
+USER 1001

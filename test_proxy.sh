@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Caddy Test Script (for /apps and /manifest routes)
+# Proxy Test Script (for /apps and /manifest routes)
 
 # --- Configuration ---
-CADDY_BASE_URL="http://localhost:8080" # Adjust if your Caddy is on a different port
+PROXY_BASE_URL="http://localhost:8080" # Adjust if your proxy is on a different port
 MINIO_UPSTREAM_URL="http://localhost:9000"
 HEALTH_PATH="/healthz"
 
@@ -92,31 +92,31 @@ run_test() {
 }
 
 # --- Main Test Execution ---
-echo "Starting Caddy Server Tests for /apps and /manifest routes..."
-echo "   Targeting: $CADDY_BASE_URL"
+echo "Starting Proxy Server Tests for /apps and /manifest routes..."
+echo "   Targeting: $PROXY_BASE_URL"
 echo ""
 
 all_tests_passed=true
 
 # Test 1: Health Check
-run_test "Health Check" "${CADDY_BASE_URL}${HEALTH_PATH}" 200 "text/plain" "OK"
+run_test "Health Check" "${PROXY_BASE_URL}${HEALTH_PATH}" 200 "text/plain" "OK"
 if [ $? -ne 0 ]; then all_tests_passed=false; fi
 
 # Test 2: /apps route - HTML file
 # This test checks the /apps route which serves files from BUCKET_PATH_PREFIX/data/
 # e.g., /apps/my-app/index.html -> BUCKET_PATH_PREFIX/data/apps/my-app/index.html
-run_test "Apps Route - HTML File" "${CADDY_BASE_URL}${APPS_TEST_PATH}" 200 "$APPS_EXPECTED_CONTENT_TYPE" "$APPS_EXPECTED_CONTENT_SNIPPET"
+run_test "Apps Route - HTML File" "${PROXY_BASE_URL}${APPS_TEST_PATH}" 200 "$APPS_EXPECTED_CONTENT_TYPE" "$APPS_EXPECTED_CONTENT_SNIPPET"
 if [ $? -ne 0 ]; then all_tests_passed=false; fi
 
 # Test 3: /apps route - JavaScript file
 # This test checks another file type through the /apps route
-run_test "Apps Route - JavaScript File" "${CADDY_BASE_URL}${APPS_JS_TEST_PATH}" 200 "$APPS_JS_EXPECTED_CONTENT_TYPE"
+run_test "Apps Route - JavaScript File" "${PROXY_BASE_URL}${APPS_JS_TEST_PATH}" 200 "$APPS_JS_EXPECTED_CONTENT_TYPE"
 if [ $? -ne 0 ]; then all_tests_passed=false; fi
 
 # Test 4: /manifest route
 # This test checks the /manifest route which serves files directly from BUCKET_PATH_PREFIX
 # e.g., /manifest/app-manifest.json -> BUCKET_PATH_PREFIX/manifest/app-manifest.json
-run_test "Manifest Route - JSON File" "${CADDY_BASE_URL}${MANIFEST_TEST_PATH}" 200 "$MANIFEST_EXPECTED_CONTENT_TYPE" "$MANIFEST_EXPECTED_CONTENT_SNIPPET"
+run_test "Manifest Route - JSON File" "${PROXY_BASE_URL}${MANIFEST_TEST_PATH}" 200 "$MANIFEST_EXPECTED_CONTENT_TYPE" "$MANIFEST_EXPECTED_CONTENT_SNIPPET"
 if [ $? -ne 0 ]; then all_tests_passed=false; fi
 
 

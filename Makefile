@@ -1,14 +1,23 @@
-# Makefile for Caddy Frontend Asset Proxy
+# Makefile for Go Frontend Asset Proxy
 
 # Default command to run when just 'make' is typed
 .DEFAULT_GOAL := help
 
 # Variables
 COMPOSE_FILE := docker-compose.yml
-TEST_SCRIPT := ./test_caddy.sh
+TEST_SCRIPT := ./test_proxy.sh
+
+# Auto-detect compose implementation
+ifeq ($(shell command -v podman-compose >/dev/null 2>&1 && echo yes),yes)
+COMPOSE := podman-compose
+else ifeq ($(shell command -v docker-compose >/dev/null 2>&1 && echo yes),yes)
+COMPOSE := docker-compose
+else
+COMPOSE := docker compose
+endif
 
 # Phony targets are targets that don't represent actual files
-.PHONY: help up down logs test clean clean-all setup-minio
+.PHONY: help up down logs test clean clean-all setup-minio build
 
 help: ## Show this help message
 	@echo "Usage: make [target]"
@@ -16,10 +25,10 @@ help: ## Show this help message
 	@echo "Targets:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-up: ## Start Minio and Caddy services in detached mode
-	@echo "Starting Docker Compose services (Minio and Caddy)..."
-	docker-compose -f $(COMPOSE_FILE) up -d --remove-orphans
-	@echo "Services started. Minio console: http://localhost:9001, Caddy proxy: http://localhost:8080"
+up: ## Start Minio and Go proxy services in detached mode
+	@echo "Starting $(COMPOSE) services (Minio and Go proxy)..."
+	$(COMPOSE) -f $(COMPOSE_FILE) up -d --remove-orphans
+	@echo "Services started. Minio console: http://localhost:9001, Go proxy: http://localhost:8080"
 	@echo "Run 'make setup-minio' if this is the first time or Minio data was cleared."
 
 setup-minio: ## Remind user to configure Minio (bucket, policy, files)
@@ -34,21 +43,21 @@ setup-minio: ## Remind user to configure Minio (bucket, policy, files)
 	@echo "Press Enter to continue after Minio setup..."
 	@read
 
-down: ## Stop Minio and Caddy services
-	@echo "Stopping Docker Compose services..."
-	docker-compose -f $(COMPOSE_FILE) down
+down: ## Stop Minio and Go proxy services
+	@echo "Stopping $(COMPOSE) services..."
+	$(COMPOSE) -f $(COMPOSE_FILE) down
 
 logs: ## Follow logs for all services
 	@echo "Following logs for all services (Ctrl+C to stop)..."
-	docker-compose -f $(COMPOSE_FILE) logs -f
+	$(COMPOSE) -f $(COMPOSE_FILE) logs -f
 
-caddy-logs: ## Follow logs for the Caddy service
-	@echo "Following logs for Caddy service (Ctrl+C to stop)..."
-	docker-compose -f $(COMPOSE_FILE) logs -f caddy
+proxy-logs: ## Follow logs for the Go proxy service
+	@echo "Following logs for Go proxy service (Ctrl+C to stop)..."
+	$(COMPOSE) -f $(COMPOSE_FILE) logs -f proxy
 
 minio-logs: ## Follow logs for the Minio service
 	@echo "Following logs for Minio service (Ctrl+C to stop)..."
-	docker-compose -f $(COMPOSE_FILE) logs -f minio
+	$(COMPOSE) -f $(COMPOSE_FILE) logs -f minio
 
 test: up setup-minio ## Start services, ensure Minio is set up, then run tests
 	@echo "Running tests..."
@@ -60,16 +69,16 @@ test: up setup-minio ## Start services, ensure Minio is set up, then run tests
 	fi
 	@echo "Tests finished. Run 'make down' to stop services."
 
-build: ## Build or rebuild the Caddy Docker image
-	@echo "Building Caddy Docker image..."
-	docker-compose -f $(COMPOSE_FILE) build --no-cache caddy
+build: ## Build or rebuild the Go proxy Docker image
+	@echo "Building Go proxy Docker image..."
+	$(COMPOSE) -f $(COMPOSE_FILE) build --no-cache proxy
 
 clean: down ## Stop and remove containers and networks
 	@echo "Cleaning up (removing containers and networks)..."
-	docker-compose -f $(COMPOSE_FILE) down --remove-orphans
+	$(COMPOSE) -f $(COMPOSE_FILE) down --remove-orphans
 
 clean-all: clean ## Stop and remove containers, networks, AND Minio data volume
 	@echo "Cleaning up thoroughly (removing containers, networks, and Minio data volume)..."
-	docker-compose -f $(COMPOSE_FILE) down -v --remove-orphans
+	$(COMPOSE) -f $(COMPOSE_FILE) down -v --remove-orphans
 	@echo "Minio data volume 'minio_data' has been removed."
 
