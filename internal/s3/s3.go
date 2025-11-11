@@ -21,6 +21,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// S3Client interface for testing
+type S3Client interface {
+	GetObject(ctx context.Context, params *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error)
+	Options() s3.Options
+}
+
 func NewS3ClientFromConfig(cfg config.FrontendAssetProxyConfig, log *logrus.Logger) *s3.Client {
 	var loadOpts []func(*awsconfig.LoadOptions) error
 	loadOpts = append(loadOpts, awsconfig.WithRegion(cfg.Region))
@@ -50,7 +56,7 @@ func NewS3ClientFromConfig(cfg config.FrontendAssetProxyConfig, log *logrus.Logg
 }
 
 // ProxyS3 resolves bucket/key from full path "/bucket/..." and streams from S3/MinIO
-func ProxyS3(w http.ResponseWriter, r *http.Request, s3c *s3.Client, cfg config.FrontendAssetProxyConfig, full string, log *logrus.Logger) {
+func ProxyS3(w http.ResponseWriter, r *http.Request, s3c S3Client, cfg config.FrontendAssetProxyConfig, full string, log *logrus.Logger) {
 	path := strings.TrimPrefix(full, "/")
 	idx := strings.IndexByte(path, '/')
 	if idx <= 0 || idx >= len(path)-1 {
@@ -102,18 +108,10 @@ func ProxyS3(w http.ResponseWriter, r *http.Request, s3c *s3.Client, cfg config.
 
 		// Map common S3 errors to HTTP status
 		status := s3ErrorToStatus(err)
-		// Optional SPA fallback: on 403/404, serve SPA entry if configured
-		// Ensure we only attempt the fallback once by checking current path against SPA path
+
 		if status == http.StatusNotFound || status == http.StatusForbidden {
-			if spa := cfg.SPAEntrypointPath; spa != "" {
-				spaPath := JoinPath(cfg.BucketPathPrefix, spa)
-				if full != spaPath { // guard against recursive fallback
-					if base := s3c.Options().Logger; base != nil {
-						logging.WithContext(ctx, base).Logf(logging.Debug, "s3 proxy request fallback to SPA entrypoint")
-					}
-					ProxyS3(w, r, s3c, cfg, spaPath, log)
-					return
-				}
+			if base := s3c.Options().Logger; base != nil {
+				logging.WithContext(ctx, base).Logf(logging.Debug, "s3 proxy request not found or forbidden bucket=%s key=%s", bucket, key)
 			}
 		}
 		http.Error(w, http.StatusText(status), status)
