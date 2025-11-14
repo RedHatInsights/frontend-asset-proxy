@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/go-toolset:1.24.6 AS builder
+FROM registry.access.redhat.com/ubi9/go-toolset:9.7-1763038106 AS builder
 ENV GO111MODULE=on
 WORKDIR $GOPATH/src/frontend-asset-proxy/
 COPY go.mod go.mod
