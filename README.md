@@ -115,6 +115,12 @@ If you prefer not to use `make` or need to perform steps individually, refer to 
 3.  Run `chmod +x test_proxy.sh && ./test_proxy.sh`.
 4.  Stop services with `docker-compose down`.
 
+## Documentation
+
+- [AGENTS.md](./AGENTS.md) — AI agent onboarding guide and repo conventions
+- [docs/testing-guidelines.md](./docs/testing-guidelines.md) — Testing patterns and test infrastructure
+- [docs/security-guidelines.md](./docs/security-guidelines.md) — Security considerations
+
 ## Deployment
 
 This component is designed to be deployed by the Frontend Operator (FEO). The container image will be built by Konflux and made available in the organization's container registry.
