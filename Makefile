@@ -17,7 +17,7 @@ COMPOSE := docker compose
 endif
 
 # Phony targets are targets that don't represent actual files
-.PHONY: help up down logs test clean clean-all setup-minio build
+.PHONY: help up down logs test test-go clean clean-all setup-minio build
 
 help: ## Show this help message
 	@echo "Usage: make [target]"
@@ -59,15 +59,20 @@ minio-logs: ## Follow logs for the Minio service
 	@echo "Following logs for Minio service (Ctrl+C to stop)..."
 	$(COMPOSE) -f $(COMPOSE_FILE) logs -f minio
 
-test: up setup-minio ## Start services, ensure Minio is set up, then run tests
-	@echo "Running tests..."
+test-go: ## Run Go unit tests
+	@echo "Running Go unit tests..."
+	go test -v ./internal/s3/...
+	@echo "Go unit tests completed."
+
+test: up setup-minio test-go ## Start services, ensure Minio is set up, then run all tests
+	@echo "Running integration tests..."
 	@if [ -x "$(TEST_SCRIPT)" ]; then \
 		$(TEST_SCRIPT); \
 	else \
 		echo "Test script $(TEST_SCRIPT) not found or not executable. Please run 'chmod +x $(TEST_SCRIPT)'."; \
 		exit 1; \
 	fi
-	@echo "Tests finished. Run 'make down' to stop services."
+	@echo "All tests finished. Run 'make down' to stop services."
 
 build: ## Build or rebuild the Go proxy Docker image
 	@echo "Building Go proxy Docker image..."
