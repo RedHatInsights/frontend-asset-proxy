@@ -1,18 +1,15 @@
-FROM registry.access.redhat.com/ubi9/go-toolset:1.26.2-1779959429 AS builder
-ENV GO111MODULE=on
-WORKDIR $GOPATH/src/frontend-asset-proxy/
-COPY go.mod go.mod
-COPY go.sum go.sum
-COPY Makefile Makefile
+FROM registry.access.redhat.com/hi/go:latest-fips-builder AS builder
+USER 0
+WORKDIR /workspace
+COPY go.mod go.sum ./
+RUN go mod download
 COPY cmd cmd
 COPY internal internal
-USER root
-RUN go get -v ./cmd/proxy
-RUN CGO_ENABLED=0 go build -o /go/bin/frontend-asset-proxy cmd/proxy/main.go
+RUN CGO_ENABLED=1 go build -ldflags "-w -s" -o /workspace/frontend-asset-proxy cmd/proxy/main.go
 
-FROM registry.access.redhat.com/ubi9-minimal:latest
-WORKDIR /app
-COPY --from=builder /go/bin/frontend-asset-proxy /usr/bin
-ENTRYPOINT ["/usr/bin/frontend-asset-proxy"]
-EXPOSE 8080
+FROM registry.access.redhat.com/hi/go:latest-fips
+WORKDIR /
+COPY --from=builder /workspace/frontend-asset-proxy /usr/bin/frontend-asset-proxy
 USER 1001
+EXPOSE 8080
+CMD ["/usr/bin/frontend-asset-proxy"]
