@@ -11,6 +11,7 @@ RUN go get -v ./cmd/proxy
 RUN CGO_ENABLED=0 go build -o /go/bin/frontend-asset-proxy cmd/proxy/main.go
 
 FROM registry.access.redhat.com/ubi9-minimal:latest
+RUN microdnf update -y && microdnf clean all
 WORKDIR /app
 COPY --from=builder /go/bin/frontend-asset-proxy /usr/bin
 ENTRYPOINT ["/usr/bin/frontend-asset-proxy"]
