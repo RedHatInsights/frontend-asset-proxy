@@ -1,5 +1,6 @@
-FROM registry.access.redhat.com/ubi9/go-toolset:1.26.2-1779959429 AS builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.26.3-1780373831 AS builder
 ENV GO111MODULE=on
+ENV GOTOOLCHAIN=auto
 WORKDIR $GOPATH/src/frontend-asset-proxy/
 COPY go.mod go.mod
 COPY go.sum go.sum
