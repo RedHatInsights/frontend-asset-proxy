@@ -16,13 +16,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func main() {
-	cfg := config.FromEnv()
-	listen := cfg.ServerPort
-	upstream := cfg.UpstreamURL
+func newRouter(cfg config.FrontendAssetProxyConfig, structuredLogger *logger.StructuredLogger) http.Handler {
 	prefix := cfg.BucketPathPrefix
-	level := cfg.LogLevel
-	structuredLogger := logger.NewLogger(level, logrus.New())
 	log := structuredLogger.Logger
 
 	r := chi.NewRouter()
@@ -53,7 +48,11 @@ func main() {
 
 	// handle HEAD requests
 	r.MethodFunc(http.MethodHead, "/*", func(w http.ResponseWriter, r *http.Request) {
-		full := s3.JoinPath(prefix, "/data"+r.URL.Path)
+		path := "/data" + r.URL.Path
+		if strings.HasPrefix(r.URL.Path, "/apps/") {
+			path = "/data" + strings.TrimPrefix(r.URL.Path, "/apps")
+		}
+		full := s3.JoinPath(prefix, path)
 		s3.ProxyS3(w, r, s3Client, cfg, full, log)
 	})
 
@@ -68,6 +67,15 @@ func main() {
 		w.Header().Set("Allow", "GET, HEAD")
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 	})
+	return r
+}
+
+func main() {
+	cfg := config.FromEnv()
+	structuredLogger := logger.NewLogger(cfg.LogLevel, logrus.New())
+	log := structuredLogger.Logger
+	r := newRouter(cfg, structuredLogger)
+	listen, upstream, prefix := cfg.ServerPort, cfg.UpstreamURL, cfg.BucketPathPrefix
 
 	srv := &http.Server{
 		Addr:              ":" + listen,

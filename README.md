@@ -25,14 +25,26 @@ Key functionalities include:
 | Variable                | Description                                                             | Example                      | Default        |
 | ----------------------- | ----------------------------------------------------------------------- | ---------------------------- | -------------- |
 | `SERVER_PORT`           | Port the proxy listens on                                               | `8080`                       | `8080`         |
-| `MINIO_UPSTREAM_URL`    | S3/MinIO endpoint (scheme+host[:port])                                   | `http://minio:9000`          | (empty = AWS)  |
+| `MINIO_UPSTREAM_URL`    | S3-compatible endpoint; explicitly empty selects AWS regional endpoints | `http://minio:9000`          | `http://minio:9000` when unset |
 | `BUCKET_PATH_PREFIX`    | Bucket/prefix to prepend (first segment is treated as bucket)            | `/frontend-assets`           | —              |
 | `SPA_ENTRYPOINT_PATH`   | SPA entrypoint path for 403/404 fallback                                 | `/index.html`                | `/index.html`  |
 | `AWS_REGION`            | AWS region (used when talking to AWS)                                     | `us-east-1`                  | `us-east-1`    |
-| `AWS_ACCESS_KEY_ID`     | Access key (optional; for MinIO/local or explicit creds)                 | `minioadmin`                 | —              |
-| `AWS_SECRET_ACCESS_KEY` | Secret key (optional; for MinIO/local or explicit creds)                 | `minioadmin`                 | —              |
+| `PUSHCACHE_AWS_ACCESS_KEY_ID` | Explicit S3-compatible access key, supplied from a Secret | — | — |
+| `PUSHCACHE_AWS_SECRET_ACCESS_KEY` | Explicit S3-compatible secret key, supplied from a Secret | — | — |
 | `AWS_CA_BUNDLE`         | (Optional) Path to custom CA bundle for TLS verification                 | `/etc/pki/ca-trust/…/ca.crt` | —              |
 | `LOG_LEVEL`             | Log level for proxy and SDK (debug, info, warn, error)                   | `debug`                      | `error`        |
+
+## FEO configuration assets
+
+`GET /config/locales.json` reads `data/config/locales.json` in the configured bucket. Relative message filenames such as `messages.fr.json` resolve under `/config/`. The `/apps/config/` alias resolves to the same objects; HEAD uses the same mapping as GET. A bucket prefix, when configured, is preserved.
+
+Config requests do **not** use SPA fallback: missing or forbidden objects retain their 404/403 status instead of returning `index.html`. Other SPA paths retain existing fallback behavior. Object content type and cache headers pass through; FEO config publication uses `public, max-age=60`. The proxy does not retain a separate in-process copy of message files.
+
+Console edge routing must direct the chosen public config URL to this proxy. Uploading files alone does not change browser routing. Keep that URL stable during a storage migration: only the origin endpoint, bucket, region and credentials need to change. Actual provisioning/data migration/CDN cutover are separate operations.
+
+For AWS S3, configure the regional HTTPS endpoint, or set `MINIO_UPSTREAM_URL=` explicitly to use AWS SDK regional resolution. Set `AWS_REGION` to the bucket region. With an explicit endpoint, supply the Secret-backed `PUSHCACHE_AWS_*` pair; with no endpoint and no explicit pair, the SDK default credential chain applies (including IAM roles). Never put production credentials in shell history or committed files. These settings are covered by configuration tests, not a live AWS access test.
+
+Run terminating Go tests with `go test -race ./...` and `go vet ./...`. The FEO `config-assets` MinIO integration suite also reads published locales through an image of this proxy; set its `ASSET_PROXY_IMAGE` to the matching build.
 
 ## Included Files
 

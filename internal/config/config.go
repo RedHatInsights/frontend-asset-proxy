@@ -132,7 +132,12 @@ func FromEnv() FrontendAssetProxyConfig {
 	cfg.ShutdownTimeout = parseDuration(getEnv("SHUTDOWN_TIMEOUT", "10s"))
 
 	// Object store configuration
-	cfg.UpstreamURL = getEnv("MINIO_UPSTREAM_URL", "http://minio:9000")
+	// An explicitly empty endpoint selects the AWS SDK's regional S3 endpoint.
+	// Preserve the local MinIO default when the variable is not set at all.
+	cfg.UpstreamURL = "http://minio:9000"
+	if endpoint, configured := os.LookupEnv("MINIO_UPSTREAM_URL"); configured {
+		cfg.UpstreamURL = endpoint
+	}
 	cfg.BucketPathPrefix = getEnv("BUCKET_PATH_PREFIX", "/frontend-assets")
 	cfg.SPAEntrypointPath = getEnv("SPA_ENTRYPOINT_PATH", "/index.html")
 	cfg.Region = getEnv("AWS_REGION", "us-east-1")

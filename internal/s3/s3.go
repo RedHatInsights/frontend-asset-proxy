@@ -102,9 +102,10 @@ func ProxyS3(w http.ResponseWriter, r *http.Request, s3c *s3.Client, cfg config.
 
 		// Map common S3 errors to HTTP status
 		status := s3ErrorToStatus(err)
-		// Optional SPA fallback: on 403/404, serve SPA entry if configured
-		// Ensure we only attempt the fallback once by checking current path against SPA path
-		if status == http.StatusNotFound || status == http.StatusForbidden {
+		// Configuration is data, not an SPA route. Missing config must remain an
+		// error so consumers can use English fallback instead of parsing HTML.
+		isConfig := strings.HasPrefix(full, JoinPath(cfg.BucketPathPrefix, "/data/config/"))
+		if !isConfig && (status == http.StatusNotFound || status == http.StatusForbidden) {
 			if spa := cfg.SPAEntrypointPath; spa != "" {
 				spaPath := JoinPath(cfg.BucketPathPrefix, spa)
 				if full != spaPath { // guard against recursive fallback
